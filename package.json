@@ -7,6 +7,6 @@
     "test": "node --test tests/test-map.mjs tests/test-map-language.mjs tests/test-history-chart.mjs tests/test-panel.mjs tests/test-information.mjs tests/test-information-interactions.mjs tests/test-management.mjs tests/test-locations.mjs"
   },
   "devDependencies": {
-    "jsdom": "26.1.0"
+    "jsdom": "30.1.2"
   }
 }
