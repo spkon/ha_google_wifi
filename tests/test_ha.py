@@ -600,3 +600,56 @@ async def test_cloud_dynamic_clients_missing_connection_and_reauth(
     await real_hass.async_block_till_done()
     assert entry.data["master_token"] == "aas_et/new-fictional"
     assert await real_hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_local_setup_with_nonstandard_foreign_identifiers(real_hass, monkeypatch):
+    """Legacy registry identifiers must not prevent the first local refresh."""
+    from types import MappingProxyType
+
+    from custom_components.google_wifi_insights.api import LocalClient
+    from custom_components.google_wifi_insights.identity import ha_records
+    from custom_components.google_wifi_insights.model import local_point
+
+    foreign_entry = config_entries.ConfigEntry(
+        data={}, domain="homekit", discovery_keys=MappingProxyType({}), options={},
+        source="user", title="Synthetic bridge", unique_id="legacy-bridge",
+        version=1, minor_version=1, subentries_data=None,
+    )
+    real_hass.config_entries._entries[foreign_entry.entry_id] = foreign_entry
+    registry = device_registry.async_get(real_hass)
+    foreign = registry.async_get_or_create(
+        config_entry_id=foreign_entry.entry_id,
+        identifiers={("example_host", "192.168.50.9")},
+        connections={(device_registry.CONNECTION_NETWORK_MAC, "aa:bb:cc:dd:ee:ff")},
+        name="Synthetic bridge",
+    )
+    # Model a nonstandard identifier already present in a restored registry.
+    foreign.identifiers.add(("homekit", "bridge", "legacy-id"))
+    original_identifiers = foreign.identifiers.copy()
+    point = local_point(
+        {"host": "192.168.50.1", "name": "Test point"},
+        {"system": {"uptime": 123}, "wan": {"online": True}},
+    )
+    snapshot = {"networks": {"local": {
+        "name": "Test WiFi", "source": "local_status",
+        "points": {"192.168.50.1": point}, "clients": {},
+        "diagnosis": "insufficient_radio_data",
+    }}}
+    monkeypatch.setattr(LocalClient, "snapshot", AsyncMock(return_value=snapshot))
+    entry = config_entries.ConfigEntry(
+        data={"mode": "local", "points": [{"name": "Test point", "host": "192.168.50.1"}]},
+        domain=DOMAIN, discovery_keys=MappingProxyType({}), options={}, source="user",
+        title="Test WiFi", unique_id="nonstandard-identifiers", version=1,
+        minor_version=1, subentries_data=None,
+    )
+    await real_hass.config_entries.async_add(entry)
+    await real_hass.async_block_till_done()
+    assert entry.state == config_entries.ConfigEntryState.LOADED
+    assert any(s.attributes.get("gwi_metric") == "uptime_seconds"
+               for s in real_hass.states.async_all())
+    records = {record["id"]: record for record in ha_records(real_hass)}
+    assert records[foreign.id]["ips"] == {"192.168.50.9"}
+    assert records[foreign.id]["macs"] == {"aa:bb:cc:dd:ee:ff"}
+    assert foreign.identifiers == original_identifiers
+    assert await real_hass.config_entries.async_unload(entry.entry_id)

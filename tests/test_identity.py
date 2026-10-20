@@ -1,6 +1,7 @@
 """Avoid incorrect aliases from stale, ambiguous, conflicting or truncated addresses."""
 import pytest
 from gwi_test.identity import (
+    identifier_pairs,
     identity_index,
     matter_interface_addresses,
     normalize_ip,
@@ -61,3 +62,14 @@ def test_cached_matter_interfaces_decode_mac_ipv4_ipv6_and_ignore_inactive_ips()
     macs, ips = matter_interface_addresses([{"1":False,"4":"qrvM3e7/","5":["wKgyAg=="]}])
     assert macs and not ips
     assert matter_interface_addresses([{"1":True,"4":"bad","5":["bad"]}]) == (set(), set())
+
+
+@pytest.mark.parametrize("invalid", [
+    ("homekit", "bridge", "legacy-id"), ("legacy",), (), "ab", None, 42,
+    ("example", None), (1, "id"),
+])
+def test_nonstandard_registry_identifiers_are_ignored(invalid):
+    values = [invalid, ("example", "identifier"), ["example_host", "192.168.50.2"]]
+    assert list(identifier_pairs(values)) == [
+        ("example", "identifier"), ("example_host", "192.168.50.2"),
+    ]

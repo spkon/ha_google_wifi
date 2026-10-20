@@ -10,6 +10,14 @@ from collections import defaultdict
 from urllib.parse import urlsplit
 
 
+def identifier_pairs(values):
+    """Ignore nonstandard registry identifiers rather than failing discovery."""
+    for value in values:
+        if (isinstance(value, (tuple, list)) and len(value) == 2
+                and all(isinstance(part, str) for part in value)):
+            yield tuple(value)
+
+
 def normalize_mac(value):
     if not isinstance(value, str) or not re.fullmatch(
         r"(?:[0-9a-fA-F]{12}|(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}|(?:[0-9a-fA-F]{4}\.){2}[0-9a-fA-F]{4})", value.strip()
@@ -164,18 +172,18 @@ def ha_records(hass):
     registry = dr.async_get(hass)
     records = {}
     for device in registry.devices:
-        if any(domain == DOMAIN for domain, _ in device.identifiers) or device.disabled_by:
+        if any(domain == DOMAIN for domain, _ in identifier_pairs(device.identifiers)) or device.disabled_by:
             continue
         name = device.name_by_user or device.name
         if not name:
             continue
         record = {"id": device.id, "name": name, "user_name": bool(device.name_by_user),
                   "macs": set(), "ips": set(), "config_entry_id": device.config_entry_id,
-                  "identifiers": device.identifiers}
-        for kind, value in device.connections:
+                  "identifiers": set(identifier_pairs(device.identifiers))}
+        for kind, value in identifier_pairs(device.connections):
             if kind == dr.CONNECTION_NETWORK_MAC and (mac := normalize_mac(value)):
                 record["macs"].add(mac)
-        for kind, value in device.identifiers:
+        for kind, value in identifier_pairs(device.identifiers):
             if kind.endswith("_host"):
                 record["ips"].update(ip_values(value))
         if device.configuration_url:

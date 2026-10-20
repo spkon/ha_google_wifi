@@ -7,7 +7,7 @@ from homeassistant.helpers import area_registry, device_registry
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
-from .identity import normalize_mac
+from .identity import identifier_pairs, normalize_mac
 
 
 class ClientAreaSync:
@@ -98,7 +98,7 @@ class ClientAreaSync:
                     continue
                 for device_id in client.get("ha_area_device_ids", []):
                     matched = registry.async_get(device_id)
-                    if matched and not matched.disabled_by and not any(d == DOMAIN for d, _ in matched.identifiers):
+                    if matched and not matched.disabled_by and not any(d == DOMAIN for d, _ in identifier_pairs(matched.identifiers)):
                         targets[device_id].add(area_id)
         for device_id, areas in targets.items():
             # Never pick a winner when multiple current clients disagree on a target.

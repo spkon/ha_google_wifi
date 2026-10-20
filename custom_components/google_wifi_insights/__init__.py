@@ -6,6 +6,7 @@ from homeassistant.helpers.storage import Store
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WifiCoordinator
 from .frontend import async_setup_frontend, async_unload_frontend
+from .identity import identifier_pairs
 from .services import register_services
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -52,7 +53,7 @@ async def async_remove_config_entry_device(hass, entry, device):
     if not coordinator or not coordinator.last_update_success or (coordinator.data or {}).get("network_errors"):
         return False
     prefix = f"{entry.entry_id}:"
-    owned = {identifier for domain, identifier in device.identifiers if domain == entry.domain and identifier.startswith(prefix)}
+    owned = {identifier for domain, identifier in identifier_pairs(device.identifiers) if domain == entry.domain and identifier.startswith(prefix)}
     if not owned:
         return False
     current = set()
