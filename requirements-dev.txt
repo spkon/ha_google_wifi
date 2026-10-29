@@ -1,6 +1,6 @@
 # Isolated test environment; HA supplies runtime libraries in an actual install.
 homeassistant==2026.10.1
-home-assistant-frontend==20260930.3
+home-assistant-frontend==20260930.5
 gpsoauth==2.0.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
