@@ -51,7 +51,7 @@ jobs:
         run: python tools/validate_release.py
       - name: Save isolated coverage and scale evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: validation-${{ matrix.ha }}
           path: |
